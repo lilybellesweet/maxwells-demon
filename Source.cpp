@@ -11,10 +11,10 @@
 using namespace std;
 
 #define INBITITERATIONS 10000
-#define DELTA -0.7
-#define TAUMAX 50
-#define TAUINCREMENT 0.1
-#define TAUMIN 0.1
+#define DELTA 1
+#define TAUMAX 10
+#define TAUINCREMENT 1
+#define TAUMIN 10
 
 void checkCurrentCell(cell const *& currentCell_ptr); //check current cell is legit
 
@@ -32,10 +32,10 @@ void checkOFile(ofstream& outputFile){
 }
 
 //generate a bit with probs. corresponding to delta.
-int genBit(){
+int genBit(double delta){
 	int bit;
-	double p0 = 0.5*(1 + DELTA);
-	double p1 = 0.5*(1 - DELTA);
+	double p0 = 0.5*(1 + delta);
+	double p1 = 0.5*(1 - delta);
 	float randN = ((float)rand() / (float)(RAND_MAX));
 
 	if (randN < p0){
@@ -93,6 +93,33 @@ void demonInteract(cell const *& currentCell_ptr, const double & tau, const doub
 	//currentCell_ptr->printInfo();
 }
 
+//take sojournTime on one of the edge states.
+int spinFlywheel(unsigned int nBits, const cell(&myCells_ptr)[6], cell const *& currentCell_ptr, double tau, double delta, double sojournTime){
+	int netRotation = 0; //sum deltaChi
+
+	//loop over the input bit stream
+	for (unsigned int iteration = 1; iteration <= nBits; iteration++){
+
+		//generate bit with probabilities p0 and p1, input delta, output a bit
+		int bit = genBit(delta);
+
+		//change starting cell depending on input bit
+		changeCell(bit, myCells_ptr, currentCell_ptr);
+
+		//loop over timesteps (interaction with demon)
+		demonInteract(currentCell_ptr, tau, sojournTime);
+
+		int deltaChi;
+		deltaChi = currentCell_ptr->getBit() - bit;
+		//cout << deltaChi << endl;
+
+		netRotation += deltaChi;
+	}
+
+	return netRotation;
+
+}
+
 int main(){
 
 	const cell a0('A', 0, 0, 0.1f);
@@ -106,6 +133,8 @@ int main(){
 	checkOFile(phiFile);
 	ofstream tauFile("tau.txt");
 	checkOFile(tauFile);
+	ofstream deltaFile("delta.txt");
+	checkOFile(deltaFile);
 
 	const cell myCells_ptr[6]{a0, b0, c0, a1, b1, c1};
 	cell const * currentCell_ptr = myCells_ptr;
@@ -123,32 +152,40 @@ int main(){
 		cout << "tau = " << tau << endl;
 		tauFile << tau << endl;
 
-		int netRotation = 0; //sum deltaChi
+		for (double delta = -1.0; delta <= DELTA; delta += 0.1){
 
-		//loop over the input bit stream
-		for (int iteration = 1; iteration <= INBITITERATIONS; iteration++){
+			cout << "delta = " << delta << endl;
+			deltaFile << delta << endl;
 
-			//generate bit with probabilities p0 and p1, input delta, output a bit
-			int bit = genBit();
+			int netRotation = spinFlywheel(INBITITERATIONS, myCells_ptr, currentCell_ptr, tau, delta, sojournTime[0]);
 
-			//change starting cell depending on input bit
-			changeCell(bit, myCells_ptr, currentCell_ptr);
+			//int netRotation = 0; //sum deltaChi
 
-			//loop over timesteps (interaction with demon)
-			demonInteract(currentCell_ptr, tau, sojournTime[0]);
+			////loop over the input bit stream
+			//for (int iteration = 1; iteration <= INBITITERATIONS; iteration++){
 
-			int deltaChi;
-			deltaChi = currentCell_ptr->getBit() - bit;
-			//cout << deltaChi << endl;
+			//	//generate bit with probabilities p0 and p1, input delta, output a bit
+			//	int bit = genBit();
 
-			netRotation += deltaChi;
+			//	//change starting cell depending on input bit
+			//	changeCell(bit, myCells_ptr, currentCell_ptr);
+
+			//	//loop over timesteps (interaction with demon)
+			//	demonInteract(currentCell_ptr, tau, sojournTime[0]);
+
+			//	int deltaChi;
+			//	deltaChi = currentCell_ptr->getBit() - bit;
+			//	//cout << deltaChi << endl;
+
+			//	netRotation += deltaChi;
+			//}
+
+			cout << netRotation << endl;
+			cout << (float)netRotation / INBITITERATIONS << endl;
+			cout << "-----" << endl;
+
+			phiFile << (float)netRotation / INBITITERATIONS << endl;
 		}
-
-		cout << netRotation << endl;
-		cout << (float)netRotation / INBITITERATIONS << endl;
-		cout << "-----" << endl;
-
-		phiFile << (float)netRotation / INBITITERATIONS << endl;
 	}
 
 	return 0;
