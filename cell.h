@@ -2,19 +2,21 @@
 
 class cell{
 private:
-	bool bit;
+	int bit; //set in construction to only be 1 or 0.
 	char state;
 	float pLeft, pRright;
-	bool full;
 public:
-	cell(){};
-	cell(char state, bool bit, float pL, float pR);
+	//cell(){};
+	cell(char state, int bit, float pL, float pR);
 	~cell(){};
 
-	void printInfo();
+	void printInfo() const;
 	//void fillCell(); use pointer instead
-	float getPLeft();
-	float getPRight();
+	float getPLeft() const;
+	float getPRight() const;
+	int getBit() const;
+	char getState() const;
+
 };
 
 #endif
